@@ -1,22 +1,78 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { recordings } from "../data/recordings";
 ---
 
 <Layout title="Recordings · Fliss Singing">
   <h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">Recordings</h1>
   <p class="mt-4 max-w-2xl text-pretty text-zinc-300">
-    This page will pull recordings from the CMS. For now, it’s a placeholder with a mobile-first layout.
+    Sample recordings for development. Play a track to see the background react in real-time.
   </p>
 
-  <div class="mt-8 grid gap-4 sm:grid-cols-2">
-    <div class="rounded-xl border border-white/10 bg-white/5 p-5">
-      <p class="text-sm font-medium text-white">Coming soon</p>
-      <p class="mt-2 text-sm text-zinc-300">Filterable grid + detail pages.</p>
+  <div class="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="text-xs font-medium uppercase tracking-[0.2em] text-zinc-400">Player</p>
+        <p class="mt-2 text-sm text-zinc-300">Select a track, then press play.</p>
+      </div>
+      <audio data-recording-audio class="w-full sm:max-w-md" controls preload="none"></audio>
     </div>
-    <div class="rounded-xl border border-white/10 bg-white/5 p-5">
-      <p class="text-sm font-medium text-white">Media types</p>
-      <p class="mt-2 text-sm text-zinc-300">YouTube/Vimeo embeds, plus optional audio uploads.</p>
+
+    <div class="mt-6 grid gap-3 sm:grid-cols-2">
+      {recordings.map((r) => (
+        <button
+          type="button"
+          data-recording-btn
+          data-src={r.src}
+          class="group rounded-xl border border-white/10 bg-zinc-950/30 p-4 text-left hover:border-white/25"
+        >
+          <p class="text-sm font-semibold text-white">{r.title}</p>
+          {r.subtitle && <p class="mt-1 text-sm text-zinc-300">{r.subtitle}</p>}
+          <p class="mt-3 text-xs text-zinc-400">
+            License:{" "}
+            <a class="underline decoration-white/20 underline-offset-2 hover:decoration-white/40" href={r.licenseUrl} target="_blank">
+              {r.licenseLabel}
+            </a>
+            {" · "}
+            <a class="underline decoration-white/20 underline-offset-2 hover:decoration-white/40" href={r.sourceUrl} target="_blank">
+              Source
+            </a>
+          </p>
+        </button>
+      ))}
     </div>
   </div>
+
+  <script>
+    import { attachAudioReactivePlayer } from "../lib/audioReactive";
+
+    const audio = document.querySelector("[data-recording-audio]");
+    const buttons = Array.from(document.querySelectorAll("[data-recording-btn]"));
+
+    function setActive(btn) {
+      buttons.forEach((b) => b.classList.remove("ring-2", "ring-white/25"));
+      btn.classList.add("ring-2", "ring-white/25");
+    }
+
+    buttons.forEach((btn, idx) => {
+      btn.addEventListener("click", () => {
+        const src = btn.getAttribute("data-src");
+        if (!src || !audio) return;
+        audio.src = src;
+        audio.load();
+        setActive(btn);
+        audio.play().catch(() => {
+          // user gesture requirements vary; controls remain available.
+        });
+      });
+      if (idx === 0) setActive(btn);
+    });
+
+    // Set initial track without autoplay.
+    const firstSrc = buttons[0]?.getAttribute("data-src");
+    if (audio && firstSrc) audio.src = firstSrc;
+
+    attachAudioReactivePlayer();
+  </script>
 </Layout>
 
