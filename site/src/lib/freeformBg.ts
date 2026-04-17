@@ -3,6 +3,11 @@ type Vec2 = { x: number; y: number };
 const STORAGE_KEY = "fliss:fxEnabled";
 
 type AudioEnergyDetail = { energy: number };
+type AudioSpectrumDetail = {
+  energy: number;
+  bands: { low: number; mid: number; high: number };
+  transient: number;
+};
 
 function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
@@ -76,6 +81,10 @@ export function initFreeformBackground() {
   // Audio energy (0..1) pushed by the audio player when music is playing.
   let energy = 0;
   let energyTarget = 0;
+  let bandLow = 0;
+  let bandMid = 0;
+  let bandHigh = 0;
+  let transient = 0;
   let beat = 0;
   let beatDecay = 0.86;
   let ripplePhase = 0;
@@ -182,16 +191,15 @@ export function initFreeformBackground() {
     }
 
     // Motion field
-    const flow = 0.9 + sp * 1.2 + energy * 2.2 + beat * 2.4;
-    const swirl = 0.6 + sp * 1.4 + energy * 1.5 + beat * 1.5;
-    const centerX = width * (0.45 + 0.1 * Math.sin(time * 0.2));
-    const centerY = height * (0.4 + 0.08 * Math.cos(time * 0.17));
+    const flow = 0.85 + sp * 1.0 + energy * 1.8 + beat * 2.0 + transient * 2.2 + bandMid * 0.9;
+    const swirl = 0.55 + sp * 1.2 + energy * 1.2 + beat * 1.2 + transient * 1.6 + bandHigh * 0.9;
 
     // Keep colors by default; we'll use additive blending for bloom only.
     ctx.globalCompositeOperation = "source-over";
 
     // Optional connective tissue: draw a few short lines for “energy”.
-    const connectDist = (Math.min(width, height) * 0.075) * (1 + energy * 1.9 + beat * 2.2);
+    const connectDist =
+      (Math.min(width, height) * 0.055) * (1 + energy * 1.2 + beat * 1.4 + transient * 1.8 + bandHigh * 0.8);
     const connectDist2 = connectDist * connectDist;
     ctx.lineWidth = 1;
 
@@ -207,7 +215,7 @@ export function initFreeformBackground() {
         if (d2 > connectDist2) continue;
         const d = Math.sqrt(d2);
         const strength = 1 - d / connectDist;
-        const alpha = (0.035 + energy * 0.18 + beat * 0.28) * strength;
+        const alpha = (0.02 + energy * 0.12 + beat * 0.18 + transient * 0.22 + bandHigh * 0.08) * strength;
         if (alpha <= 0.01) continue;
         // Tint lines slightly so we don't wash everything to white.
         ctx.strokeStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${alpha})`;
@@ -219,27 +227,55 @@ export function initFreeformBackground() {
     }
 
     for (const pt of particles) {
-      const dx = (pt.p.x - centerX) / Math.max(1, width);
-      const dy = (pt.p.y - centerY) / Math.max(1, height);
+      const nx = pt.p.x / Math.max(1, width);
+      const ny = pt.p.y / Math.max(1, height);
+
+      // Per-particle "center" avoids a single global disc orbit.
+      const ph = phase.get(pt) ?? 0;
+      const cx =
+        width *
+        (0.42 +
+          0.12 * Math.sin(time * 0.23 + ph) +
+          0.08 * Math.sin(time * 0.61 + ph * 2.1) +
+          0.05 * bandLow * Math.sin(time * 2.2 + transient * 6));
+      const cy =
+        height *
+        (0.38 +
+          0.1 * Math.cos(time * 0.19 + ph * 1.3) +
+          0.07 * Math.cos(time * 0.53 + ph * 1.9) +
+          0.05 * bandMid * Math.cos(time * 2.0 + transient * 5));
+
+      const dx = (pt.p.x - cx) / Math.max(1, width);
+      const dy = (pt.p.y - cy) / Math.max(1, height);
       const dist = Math.sqrt(dx * dx + dy * dy) + 1e-6;
 
       // Curl-ish field using trig, stable + cheap.
-      const a = Math.atan2(dy, dx) + Math.sin(time * 0.6 + dist * 8) * 0.35 * swirl;
-      const fx = -Math.sin(a) * (0.25 + 0.65 / (1 + dist * 6)) * flow;
-      const fy = Math.cos(a) * (0.25 + 0.65 / (1 + dist * 6)) * flow;
+      const a =
+        Math.atan2(dy, dx) +
+        Math.sin(time * 0.55 + dist * 8 + ph) * 0.28 * swirl +
+        Math.sin(time * 1.1 + nx * 10 + ny * 7 + ph) * 0.18 * (0.6 + transient);
+
+      const falloff = 0.22 + 0.72 / (1 + dist * (5.2 + bandHigh * 2.0));
+      const fx = -Math.sin(a) * falloff * flow;
+      const fy = Math.cos(a) * falloff * flow;
+
+      // A cheap pseudo-curl noise field to break symmetry further.
+      const n1 = Math.sin((nx + time * 0.12) * 12.7 + ph) * Math.cos((ny - time * 0.09) * 11.3 - ph);
+      const n2 = Math.cos((nx - time * 0.11) * 10.9 + ph * 0.7) * Math.sin((ny + time * 0.13) * 13.1 - ph * 0.9);
+      const curlx = (n1 - n2) * (0.12 + 0.22 * transient + 0.12 * bandHigh);
+      const curly = (n2 + n1) * (0.10 + 0.18 * transient + 0.10 * bandHigh);
 
       // Velocity integration (with gentle damping).
       // Add a little per-particle divergence so the field doesn't collapse into a single blob.
-      const ph = phase.get(pt) ?? 0;
       const jitter = (0.06 + energy * 0.06) * (0.5 + 0.5 * Math.sin(time * 0.7 + ph));
       const jx = Math.cos(ph + time * 0.45) * jitter;
       const jy = Math.sin(ph - time * 0.4) * jitter;
 
-      pt.v.x = pt.v.x * 0.9 + (fx + jx) * 0.22;
-      pt.v.y = pt.v.y * 0.9 + (fy + jy) * 0.22;
+      pt.v.x = pt.v.x * 0.9 + (fx + curlx + jx) * 0.22;
+      pt.v.y = pt.v.y * 0.9 + (fy + curly + jy) * 0.22;
 
       // Cap velocity to avoid streaky clumps.
-      const vmax = 1.8 + energy * 1.6 + beat * 1.8;
+      const vmax = 1.8 + energy * 1.6 + beat * 1.8 + transient * 1.2;
       const vx = pt.v.x;
       const vy = pt.v.y;
       const v2 = vx * vx + vy * vy;
@@ -262,7 +298,7 @@ export function initFreeformBackground() {
       const size =
         pt.s *
         (0.8 + 0.6 * (1 - clamp(dist * 1.4, 0, 1))) *
-        (1.05 + energy * 1.05 + beat * 0.9);
+        (1.05 + energy * 0.85 + beat * 0.75 + transient * 0.55 + bandHigh * 0.35);
 
       const hue = (pt.hue + sp * 120 + time * 6) % 360;
       ctx.fillStyle = `hsla(${hue}, 98%, ${76 + energy * 14 + beat * 10}%, ${alpha + energy * 0.26 + beat * 0.26})`;
@@ -273,7 +309,7 @@ export function initFreeformBackground() {
       // Tiny hot core for contrast.
       if (energy > 0.08) {
         // Keep cores colored (not pure white).
-        ctx.fillStyle = `hsla(${hue}, 98%, 86%, ${0.06 + energy * 0.16 + beat * 0.18})`;
+        ctx.fillStyle = `hsla(${hue}, 98%, 86%, ${0.05 + energy * 0.12 + beat * 0.14 + transient * 0.22})`;
         ctx.beginPath();
         ctx.arc(pt.p.x, pt.p.y, Math.max(0.6, size * 0.35), 0, Math.PI * 2);
         ctx.fill();
@@ -321,6 +357,15 @@ export function initFreeformBackground() {
   window.addEventListener("fliss:audio-energy", (ev: Event) => {
     const detail = (ev as CustomEvent<AudioEnergyDetail>).detail;
     energyTarget = clamp(detail?.energy ?? 0, 0, 1);
+  });
+
+  window.addEventListener("fliss:audio-spectrum", (ev: Event) => {
+    const detail = (ev as CustomEvent<AudioSpectrumDetail>).detail;
+    energyTarget = clamp(detail?.energy ?? energyTarget, 0, 1);
+    bandLow = clamp(detail?.bands?.low ?? 0, 0, 1);
+    bandMid = clamp(detail?.bands?.mid ?? 0, 0, 1);
+    bandHigh = clamp(detail?.bands?.high ?? 0, 0, 1);
+    transient = clamp(detail?.transient ?? 0, 0, 1);
   });
 
   window.addEventListener("resize", () => {

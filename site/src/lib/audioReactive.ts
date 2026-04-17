@@ -3,9 +3,20 @@ type EnergyEventDetail = {
   sourceId?: string;
 };
 
+type SpectrumEventDetail = {
+  energy: number; // 0..1 (overall loudness-ish)
+  bands: {
+    low: number; // 0..1
+    mid: number; // 0..1
+    high: number; // 0..1
+  };
+  transient: number; // 0..1 (note-ish peaks / onsets)
+};
+
 declare global {
   interface WindowEventMap {
     "fliss:audio-energy": CustomEvent<EnergyEventDetail>;
+    "fliss:audio-spectrum": CustomEvent<SpectrumEventDetail>;
   }
 }
 
@@ -26,6 +37,7 @@ export function attachAudioReactivePlayer() {
   let raf = 0;
   let lastEnergy = 0;
   let peak = 0;
+  let lastRms = 0;
 
   const freqData = () => new Uint8Array(analyser?.frequencyBinCount ?? 0);
   let buf = new Uint8Array(0);
@@ -34,6 +46,22 @@ export function attachAudioReactivePlayer() {
   function emit(energy: number) {
     const detail: EnergyEventDetail = { energy: clamp(energy, 0, 1) };
     window.dispatchEvent(new CustomEvent("fliss:audio-energy", { detail }));
+  }
+
+  function emitSpectrum(detail: SpectrumEventDetail) {
+    window.dispatchEvent(new CustomEvent("fliss:audio-spectrum", { detail }));
+  }
+
+  function bandEnergy(buf: Uint8Array, i0: number, i1: number) {
+    const lo = clamp(Math.floor(i0), 0, buf.length - 1);
+    const hi = clamp(Math.floor(i1), 0, buf.length - 1);
+    let sum = 0;
+    let n = 0;
+    for (let i = lo; i <= hi; i++) {
+      sum += buf[i] / 255;
+      n++;
+    }
+    return n ? sum / n : 0;
   }
 
   function tick() {
@@ -73,6 +101,27 @@ export function attachAudioReactivePlayer() {
     lastEnergy = lastEnergy * 0.7 + peak * 0.3;
     emit(lastEnergy);
 
+    // Multi-band spectrum for more "note-ish" motion on dense piano textures.
+    const n = buf.length;
+    const low = bandEnergy(buf, 0, Math.floor(n * 0.12));
+    const mid = bandEnergy(buf, Math.floor(n * 0.12), Math.floor(n * 0.45));
+    const high = bandEnergy(buf, Math.floor(n * 0.45), n - 1);
+
+    // Onset / transient detector: positive RMS derivative (fast attacks).
+    const dr = clamp(rms - lastRms, 0, 1);
+    lastRms = lastRms * 0.92 + rms * 0.08;
+    const transient = clamp(dr * 8, 0, 1);
+
+    emitSpectrum({
+      energy: lastEnergy,
+      bands: {
+        low: clamp(Math.pow(low, 0.75), 0, 1),
+        mid: clamp(Math.pow(mid, 0.75), 0, 1),
+        high: clamp(Math.pow(high, 0.75), 0, 1)
+      },
+      transient
+    });
+
     raf = requestAnimationFrame(tick);
   }
 
@@ -81,11 +130,12 @@ export function attachAudioReactivePlayer() {
     ctx = new AudioContext();
     analyser = ctx.createAnalyser();
     analyser.fftSize = 1024;
-    analyser.smoothingTimeConstant = 0.82;
+    // Lower smoothing so fast passages can still modulate visuals.
+    analyser.smoothingTimeConstant = 0.55;
 
     timeAnalyser = ctx.createAnalyser();
     timeAnalyser.fftSize = 1024;
-    timeAnalyser.smoothingTimeConstant = 0.5;
+    timeAnalyser.smoothingTimeConstant = 0.35;
 
     source = ctx.createMediaElementSource(audio);
     source.connect(analyser);
