@@ -24,6 +24,7 @@ import { recordings } from "../data/recordings";
           type="button"
           data-recording-btn
           data-src={import.meta.env.BASE_URL + r.src}
+          data-playback-gain={String(r.playbackGain ?? 1)}
           class="group rounded-xl border border-white/10 bg-zinc-950/30 p-4 text-left hover:border-white/25"
         >
           <p class="text-sm font-semibold text-white">{r.title}</p>
@@ -52,6 +53,8 @@ import { recordings } from "../data/recordings";
     function setActive(btn) {
       buttons.forEach((b) => b.classList.remove("ring-2", "ring-white/25"));
       btn.classList.add("ring-2", "ring-white/25");
+      const g = btn.getAttribute("data-playback-gain");
+      if (audio && g) audio.dataset.playbackGain = g;
     }
 
     buttons.forEach((btn, idx) => {

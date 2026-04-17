@@ -7,6 +7,7 @@ export type Props = {
 const { title = "Fliss Singing", description = "Singing portfolio and recordings." } = Astro.props;
 
 import FreeformBackground from "../components/FreeformBackground.astro";
+import { sitePath } from "../lib/sitePath";
 ---
 
 <style>
@@ -17,8 +18,7 @@ import FreeformBackground from "../components/FreeformBackground.astro";
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href={sitePath("favicon.svg")} />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -56,11 +56,11 @@ import FreeformBackground from "../components/FreeformBackground.astro";
 
       <header class="sticky top-0 z-40 -mx-4 border-b border-white/10 bg-zinc-950/60 px-4 backdrop-blur">
         <div class="flex h-14 items-center justify-between">
-          <a href="/" class="font-semibold tracking-tight">Fliss Singing</a>
+          <a href={sitePath("")} class="font-semibold tracking-tight">Fliss Singing</a>
           <nav class="flex items-center gap-4 text-sm text-zinc-200">
-            <a class="hover:text-white" href="/recordings">Recordings</a>
-            <a class="hover:text-white" href="/about">About</a>
-            <a class="hover:text-white" href="/contact">Contact</a>
+            <a class="hover:text-white" href={sitePath("recordings")}>Recordings</a>
+            <a class="hover:text-white" href={sitePath("about")}>About</a>
+            <a class="hover:text-white" href={sitePath("contact")}>Contact</a>
           </nav>
         </div>
       </header>
