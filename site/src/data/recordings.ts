@@ -4,8 +4,7 @@ export type Recording = {
   subtitle?: string;
   date?: string;
   /**
-   * Path relative to Astro base URL (no leading slash).
-   * Example: "audio/example.ogg" or "audio/track.mp3"
+   * Absolute `https://…` (e.g. Sanity CDN) or path relative to site base (e.g. `audio/track.mp3`).
    */
   src: string;
   licenseLabel: string;
@@ -17,9 +16,10 @@ export type Recording = {
   playbackGain?: number;
 };
 
-// Temporary sample recordings for development.
-// Later: these will come from Sanity (CMS).
-export const recordings: Recording[] = [
+/**
+ * Used when Sanity is not configured at build time, the query fails, or no published recordings exist.
+ */
+export const fallbackRecordings: Recording[] = [
   {
     id: "minuet-in-g",
     title: "Minuet in G (Beethoven)",
@@ -41,4 +41,3 @@ export const recordings: Recording[] = [
     sourceUrl: "https://incompetech.com/music/royalty-free/"
   }
 ];
-
