@@ -5,28 +5,50 @@ import ScrollStory from "../components/ScrollStory.astro";
 
 <Layout title="Fliss Singing">
 	<section class="py-10 sm:py-16">
-		<p class="text-sm uppercase tracking-[0.2em] text-zinc-400">Singing portfolio</p>
-		<h1 class="mt-4 text-balance text-4xl font-semibold tracking-tight sm:text-6xl">
-			A home for recordings, performances, and the story behind the voice.
-		</h1>
-		<p class="mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-zinc-300">
-			This site will showcase audio/video recordings and a scroll-driven experience inspired by your reference sites.
-			Content will be managed via a CMS so updates don’t require Git.
-		</p>
+		<div class="flex flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
+			<div>
+				<p class="text-sm uppercase tracking-[0.2em] text-zinc-400">Singing portfolio</p>
+				<h1 class="mt-4 text-balance text-4xl font-semibold tracking-tight sm:text-6xl">
+					A home for recordings, performances, and the story behind the voice.
+				</h1>
+				<p class="mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-zinc-300">
+					A modern, motion-forward site built as a portfolio project. Recordings will be managed in a CMS so updates don’t
+					require Git.
+				</p>
 
-		<div class="mt-8 flex flex-col gap-3 sm:flex-row">
-			<a
-				href="/recordings"
-				class="inline-flex items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-zinc-200"
-			>
-				View recordings
-			</a>
-			<a
-				href="/contact"
-				class="inline-flex items-center justify-center rounded-md border border-white/15 px-4 py-2 text-sm font-medium text-white hover:border-white/30"
-			>
-				Contact / booking
-			</a>
+				<div class="mt-8 flex flex-col gap-3 sm:flex-row">
+					<a
+						href="/recordings"
+						class="inline-flex items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-zinc-200"
+					>
+						View recordings
+					</a>
+					<a
+						href="/contact"
+						class="inline-flex items-center justify-center rounded-md border border-white/15 px-4 py-2 text-sm font-medium text-white hover:border-white/30"
+					>
+						Contact / booking
+					</a>
+				</div>
+			</div>
+
+			<div class="rounded-2xl border border-white/10 bg-white/5 p-6">
+				<p class="text-xs font-medium uppercase tracking-[0.2em] text-zinc-400">Now building</p>
+				<ul class="mt-4 space-y-2 text-sm text-zinc-200">
+					<li class="flex items-start gap-2">
+						<span class="mt-1 h-1.5 w-1.5 rounded-full bg-zinc-200/70" />
+						<span>Scroll-driven storytelling (desktop) with mobile-first fallbacks</span>
+					</li>
+					<li class="flex items-start gap-2">
+						<span class="mt-1 h-1.5 w-1.5 rounded-full bg-zinc-200/70" />
+						<span>Recordings library (CMS-backed)</span>
+					</li>
+					<li class="flex items-start gap-2">
+						<span class="mt-1 h-1.5 w-1.5 rounded-full bg-zinc-200/70" />
+						<span>Fast, minimal, portfolio-grade UI</span>
+					</li>
+				</ul>
+			</div>
 		</div>
 	</section>
 
