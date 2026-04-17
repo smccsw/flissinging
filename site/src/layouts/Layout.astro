@@ -42,8 +42,16 @@ import FreeformBackground from "../components/FreeformBackground.astro";
 
     <div class="mx-auto flex min-h-dvh max-w-6xl flex-col px-4">
       <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10">
-        <div class="absolute left-1/2 top-[-30vh] h-[70vh] w-[70vh] -translate-x-1/2 rounded-full bg-fuchsia-500/7 blur-3xl" />
-        <div class="absolute bottom-[-35vh] left-[-20vh] h-[80vh] w-[80vh] rounded-full bg-cyan-400/7 blur-3xl" />
+        <div
+          data-fx-glow="a"
+          class="absolute left-1/2 top-[-30vh] h-[70vh] w-[70vh] -translate-x-1/2 rounded-full blur-3xl"
+          style="background: radial-gradient(circle, rgba(168,85,247,0.16) 0%, transparent 68%);"
+        />
+        <div
+          data-fx-glow="b"
+          class="absolute bottom-[-35vh] left-[-20vh] h-[80vh] w-[80vh] rounded-full blur-3xl"
+          style="background: radial-gradient(circle, rgba(34,211,238,0.14) 0%, transparent 68%);"
+        />
       </div>
 
       <header class="sticky top-0 z-40 -mx-4 border-b border-white/10 bg-zinc-950/60 px-4 backdrop-blur">

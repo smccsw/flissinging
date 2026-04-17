@@ -2,13 +2,49 @@
 /**
  * Full-page generative canvas background.
  * - Toggleable via a small "FX" button (persisted in localStorage).
+ * - Color palette swatches (persisted) tune wash / pulses / dots / layout glows.
  * - Respects prefers-reduced-motion.
  * - Auto-reduces work on smaller screens.
  */
+import { FX_PALETTES } from "../lib/fxPalette";
 ---
+
+<style>
+  @media (prefers-reduced-motion: reduce) {
+    [data-fx-palette-bar] {
+      display: none;
+    }
+  }
+</style>
 
 <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-20">
   <canvas data-freeform-bg class="h-full w-full opacity-90 mix-blend-screen"></canvas>
+</div>
+
+<div
+  data-fx-palette-bar
+  class="pointer-events-auto fixed bottom-[3.35rem] right-4 z-50 flex max-w-[min(100vw-2rem,14rem)] flex-col items-end gap-1"
+>
+  <p class="pr-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">Palette</p>
+  <div
+    class="flex flex-wrap justify-end gap-1.5 rounded-2xl border border-white/12 bg-zinc-950/65 p-2 backdrop-blur"
+    role="group"
+    aria-label="Background color palette"
+  >
+    {
+      FX_PALETTES.map((p) => (
+        <button
+          type="button"
+          data-fx-palette={p.id}
+          title={p.label}
+          aria-label={`Palette: ${p.label}`}
+          aria-pressed="false"
+          class="fx-palette-swatch h-8 w-8 shrink-0 rounded-full ring-2 ring-zinc-700/60 transition hover:ring-white/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/45"
+          style={`background: linear-gradient(135deg, rgb(${p.washA.join(",")}), rgb(${p.washB.join(",")}))`}
+        />
+      ))
+    }
+  </div>
 </div>
 
 <!-- FX toggle (interactive, but tiny + unobtrusive) -->
