@@ -89,6 +89,7 @@ export function initFreeformBackground() {
   const rng = mulberry32(1337);
   const baseCount = 140;
   const particles: Array<{ p: Vec2; v: Vec2; s: number; hue: number }> = [];
+  const phase = new WeakMap<{ p: Vec2; v: Vec2; s: number; hue: number }, number>();
 
   function desiredCount() {
     const small = window.matchMedia?.("(max-width: 767px)")?.matches ?? false;
@@ -102,12 +103,14 @@ export function initFreeformBackground() {
     particles.length = 0;
     const count = desiredCount();
     for (let i = 0; i < count; i++) {
-      particles.push({
+      const pt = {
         p: { x: rng() * width, y: rng() * height },
         v: { x: (rng() - 0.5) * 0.4, y: (rng() - 0.5) * 0.4 },
         s: 0.6 + rng() * 1.6,
         hue: rng() * 360
-      });
+      };
+      particles.push(pt);
+      phase.set(pt, rng() * Math.PI * 2);
     }
   }
 
@@ -184,7 +187,8 @@ export function initFreeformBackground() {
     const centerX = width * (0.45 + 0.1 * Math.sin(time * 0.2));
     const centerY = height * (0.4 + 0.08 * Math.cos(time * 0.17));
 
-    ctx.globalCompositeOperation = "lighter";
+    // Keep colors by default; we'll use additive blending for bloom only.
+    ctx.globalCompositeOperation = "source-over";
 
     // Optional connective tissue: draw a few short lines for “energy”.
     const connectDist = (Math.min(width, height) * 0.075) * (1 + energy * 1.9 + beat * 2.2);
@@ -205,7 +209,8 @@ export function initFreeformBackground() {
         const strength = 1 - d / connectDist;
         const alpha = (0.035 + energy * 0.18 + beat * 0.28) * strength;
         if (alpha <= 0.01) continue;
-        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+        // Tint lines slightly so we don't wash everything to white.
+        ctx.strokeStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${alpha})`;
         ctx.beginPath();
         ctx.moveTo(a.p.x, a.p.y);
         ctx.lineTo(b.p.x, b.p.y);
@@ -224,8 +229,25 @@ export function initFreeformBackground() {
       const fy = Math.cos(a) * (0.25 + 0.65 / (1 + dist * 6)) * flow;
 
       // Velocity integration (with gentle damping).
-      pt.v.x = pt.v.x * 0.92 + fx * 0.18;
-      pt.v.y = pt.v.y * 0.92 + fy * 0.18;
+      // Add a little per-particle divergence so the field doesn't collapse into a single blob.
+      const ph = phase.get(pt) ?? 0;
+      const jitter = (0.06 + energy * 0.06) * (0.5 + 0.5 * Math.sin(time * 0.7 + ph));
+      const jx = Math.cos(ph + time * 0.45) * jitter;
+      const jy = Math.sin(ph - time * 0.4) * jitter;
+
+      pt.v.x = pt.v.x * 0.9 + (fx + jx) * 0.22;
+      pt.v.y = pt.v.y * 0.9 + (fy + jy) * 0.22;
+
+      // Cap velocity to avoid streaky clumps.
+      const vmax = 1.8 + energy * 1.6 + beat * 1.8;
+      const vx = pt.v.x;
+      const vy = pt.v.y;
+      const v2 = vx * vx + vy * vy;
+      if (v2 > vmax * vmax) {
+        const s = vmax / Math.sqrt(v2);
+        pt.v.x *= s;
+        pt.v.y *= s;
+      }
 
       pt.p.x += pt.v.x;
       pt.p.y += pt.v.y;
@@ -243,18 +265,27 @@ export function initFreeformBackground() {
         (1.05 + energy * 1.05 + beat * 0.9);
 
       const hue = (pt.hue + sp * 120 + time * 6) % 360;
-      ctx.fillStyle = `hsla(${hue}, 98%, ${78 + energy * 20 + beat * 14}%, ${alpha + energy * 0.30 + beat * 0.38})`;
+      ctx.fillStyle = `hsla(${hue}, 98%, ${76 + energy * 14 + beat * 10}%, ${alpha + energy * 0.26 + beat * 0.26})`;
       ctx.beginPath();
       ctx.arc(pt.p.x, pt.p.y, size, 0, Math.PI * 2);
       ctx.fill();
 
       // Tiny hot core for contrast.
       if (energy > 0.08) {
-        ctx.fillStyle = `rgba(255,255,255,${0.05 + energy * 0.14 + beat * 0.18})`;
+        // Keep cores colored (not pure white).
+        ctx.fillStyle = `hsla(${hue}, 98%, 86%, ${0.06 + energy * 0.16 + beat * 0.18})`;
         ctx.beginPath();
         ctx.arc(pt.p.x, pt.p.y, Math.max(0.6, size * 0.35), 0, Math.PI * 2);
         ctx.fill();
       }
+    }
+
+    // Additive bloom pass (kept small to avoid whitening).
+    if (energy > 0.05) {
+      ctx.globalCompositeOperation = "lighter";
+      const bloom = clamp(energy * 0.18 + beat * 0.22, 0, 0.35);
+      ctx.fillStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${bloom})`;
+      ctx.fillRect(0, 0, width, height);
     }
 
     raf = requestAnimationFrame(draw);
