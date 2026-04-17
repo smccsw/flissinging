@@ -1,3 +1,5 @@
+import { getFxPaletteById, readFxPaletteId, syncFxLayoutGlows, writeFxPaletteId } from "./fxPalette";
+
 type Vec2 = { x: number; y: number };
 
 const STORAGE_KEY = "fliss:fxEnabled";
@@ -11,6 +13,10 @@ type AudioSpectrumDetail = {
 
 function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
+}
+
+function mod360(v: number) {
+  return ((v % 360) + 360) % 360;
 }
 
 function prefersReducedMotion() {
@@ -69,7 +75,10 @@ export function initFreeformBackground() {
 
   const canvas = document.querySelector<HTMLCanvasElement>("[data-freeform-bg]");
   const toggle = document.querySelector<HTMLButtonElement>("[data-freeform-toggle]");
+  const paletteButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-fx-palette]"));
   if (!canvas || !toggle) return;
+
+  let paletteId = readFxPaletteId();
 
   const ctx = canvas.getContext("2d", { alpha: true });
   if (!ctx) return;
@@ -137,9 +146,27 @@ export function initFreeformBackground() {
     seedParticles();
   }
 
+  function syncPaletteUi() {
+    for (const btn of paletteButtons) {
+      const id = btn.getAttribute("data-fx-palette");
+      const on = id === paletteId;
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.classList.toggle("ring-white/55", on);
+      btn.classList.toggle("ring-zinc-700/60", !on);
+    }
+  }
+
+  function applyPalette(id: string) {
+    paletteId = getFxPaletteById(id).id;
+    writeFxPaletteId(paletteId);
+    syncFxLayoutGlows(getFxPaletteById(paletteId));
+    syncPaletteUi();
+  }
+
   function draw(t: number) {
     const time = t * 0.001;
     const sp = getScrollProgress();
+    const pal = getFxPaletteById(paletteId);
 
     // Smooth energy so visuals feel musical, not jittery.
     energyTarget = clamp(energyTarget, 0, 1);
@@ -154,8 +181,8 @@ export function initFreeformBackground() {
     ripplePhase = Math.max(0, ripplePhase - 0.02);
 
     // Background wash that subtly changes with scroll.
-    const cA: [number, number, number] = [168, 85, 247]; // fuchsia-ish
-    const cB: [number, number, number] = [34, 211, 238]; // cyan-ish
+    const cA = pal.washA;
+    const cB = pal.washB;
     const c = mixColor(cA, cB, clamp(sp + energy * 0.25, 0, 1));
 
     ctx.clearRect(0, 0, width, height);
@@ -300,8 +327,10 @@ export function initFreeformBackground() {
         (0.8 + 0.6 * (1 - clamp(dist * 1.4, 0, 1))) *
         (1.05 + energy * 0.85 + beat * 0.75 + transient * 0.55 + bandHigh * 0.35);
 
-      const hue = (pt.hue + sp * 120 + time * 6) % 360;
-      ctx.fillStyle = `hsla(${hue}, 98%, ${76 + energy * 14 + beat * 10}%, ${alpha + energy * 0.26 + beat * 0.26})`;
+      const hue = mod360(
+        pt.hue * pal.dotHueScale + pal.dotHueShift + sp * pal.dotScrollHue + time * pal.dotTimeHue
+      );
+      ctx.fillStyle = `hsla(${hue}, ${pal.dotSat}%, ${76 + energy * 14 + beat * 10}%, ${alpha + energy * 0.26 + beat * 0.26})`;
       ctx.beginPath();
       ctx.arc(pt.p.x, pt.p.y, size, 0, Math.PI * 2);
       ctx.fill();
@@ -309,7 +338,7 @@ export function initFreeformBackground() {
       // Tiny hot core for contrast.
       if (energy > 0.08) {
         // Keep cores colored (not pure white).
-        ctx.fillStyle = `hsla(${hue}, 98%, 86%, ${0.05 + energy * 0.12 + beat * 0.14 + transient * 0.22})`;
+        ctx.fillStyle = `hsla(${hue}, ${pal.dotSat}%, 86%, ${0.05 + energy * 0.12 + beat * 0.14 + transient * 0.22})`;
         ctx.beginPath();
         ctx.arc(pt.p.x, pt.p.y, Math.max(0.6, size * 0.35), 0, Math.PI * 2);
         ctx.fill();
@@ -353,6 +382,16 @@ export function initFreeformBackground() {
     if (enabled) start();
     else stop();
   });
+
+  for (const btn of paletteButtons) {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-fx-palette");
+      if (!id) return;
+      applyPalette(id);
+    });
+  }
+
+  applyPalette(paletteId);
 
   window.addEventListener("fliss:audio-energy", (ev: Event) => {
     const detail = (ev as CustomEvent<AudioEnergyDetail>).detail;
