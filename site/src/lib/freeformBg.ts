@@ -2,6 +2,8 @@ type Vec2 = { x: number; y: number };
 
 const STORAGE_KEY = "fliss:fxEnabled";
 
+type AudioEnergyDetail = { energy: number };
+
 function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
 }
@@ -71,6 +73,10 @@ export function initFreeformBackground() {
   let running = false;
   let raf = 0;
 
+  // Audio energy (0..1) pushed by the audio player when music is playing.
+  let energy = 0;
+  let energyTarget = 0;
+
   const dpr = () => Math.min(2, window.devicePixelRatio || 1);
   let width = 0;
   let height = 0;
@@ -120,24 +126,28 @@ export function initFreeformBackground() {
     const time = t * 0.001;
     const sp = getScrollProgress();
 
+    // Smooth energy so visuals feel musical, not jittery.
+    energyTarget = clamp(energyTarget, 0, 1);
+    energy = energy * 0.85 + energyTarget * 0.15;
+
     // Background wash that subtly changes with scroll.
     const cA: [number, number, number] = [168, 85, 247]; // fuchsia-ish
     const cB: [number, number, number] = [34, 211, 238]; // cyan-ish
-    const c = mixColor(cA, cB, sp);
+    const c = mixColor(cA, cB, clamp(sp + energy * 0.25, 0, 1));
 
     ctx.clearRect(0, 0, width, height);
     ctx.globalCompositeOperation = "source-over";
 
     const g = ctx.createRadialGradient(width * 0.5, height * (0.3 + sp * 0.2), 0, width * 0.5, height * 0.5, Math.max(width, height) * 0.8);
-    g.addColorStop(0, `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.08)`);
+    g.addColorStop(0, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${0.06 + energy * 0.10})`);
     g.addColorStop(0.6, "rgba(0,0,0,0)");
     g.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, width, height);
 
     // Motion field
-    const flow = 0.9 + sp * 1.2;
-    const swirl = 0.6 + sp * 1.4;
+    const flow = 0.9 + sp * 1.2 + energy * 1.2;
+    const swirl = 0.6 + sp * 1.4 + energy * 1.0;
     const centerX = width * (0.45 + 0.1 * Math.sin(time * 0.2));
     const centerY = height * (0.4 + 0.08 * Math.cos(time * 0.17));
 
@@ -167,10 +177,10 @@ export function initFreeformBackground() {
       if (pt.p.y > height + 10) pt.p.y = -10;
 
       const alpha = 0.12 + 0.12 * Math.sin(time + dist * 6);
-      const size = pt.s * (0.8 + 0.6 * (1 - clamp(dist * 1.4, 0, 1)));
+      const size = pt.s * (0.8 + 0.6 * (1 - clamp(dist * 1.4, 0, 1))) * (0.9 + energy * 0.55);
 
       const hue = (pt.hue + sp * 120 + time * 6) % 360;
-      ctx.fillStyle = `hsla(${hue}, 90%, 70%, ${alpha})`;
+      ctx.fillStyle = `hsla(${hue}, 90%, ${68 + energy * 12}%, ${alpha + energy * 0.06})`;
       ctx.beginPath();
       ctx.arc(pt.p.x, pt.p.y, size, 0, Math.PI * 2);
       ctx.fill();
@@ -204,6 +214,11 @@ export function initFreeformBackground() {
     syncToggleUI();
     if (enabled) start();
     else stop();
+  });
+
+  window.addEventListener("fliss:audio-energy", (ev: Event) => {
+    const detail = (ev as CustomEvent<AudioEnergyDetail>).detail;
+    energyTarget = clamp(detail?.energy ?? 0, 0, 1);
   });
 
   window.addEventListener("resize", () => {
