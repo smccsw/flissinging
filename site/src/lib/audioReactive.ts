@@ -38,9 +38,11 @@ export function attachAudioReactivePlayer() {
   let lastEnergy = 0;
   let peak = 0;
   let lastRms = 0;
+  let lastTransient = 0;
 
   const freqData = () => new Uint8Array(analyser?.frequencyBinCount ?? 0);
   let buf = new Uint8Array(0);
+  let prevBuf = new Uint8Array(0);
   let tbuf = new Uint8Array(0);
 
   function emit(energy: number) {
@@ -66,7 +68,10 @@ export function attachAudioReactivePlayer() {
 
   function tick() {
     if (!analyser || !timeAnalyser) return;
-    if (buf.length !== analyser.frequencyBinCount) buf = freqData();
+    if (buf.length !== analyser.frequencyBinCount) {
+      buf = freqData();
+      prevBuf = new Uint8Array(buf.length);
+    }
     if (tbuf.length !== timeAnalyser.fftSize) tbuf = new Uint8Array(timeAnalyser.fftSize);
 
     analyser.getByteFrequencyData(buf);
@@ -107,10 +112,21 @@ export function attachAudioReactivePlayer() {
     const mid = bandEnergy(buf, Math.floor(n * 0.12), Math.floor(n * 0.45));
     const high = bandEnergy(buf, Math.floor(n * 0.45), n - 1);
 
-    // Onset / transient detector: positive RMS derivative (fast attacks).
+    // Onset / transient detector: combine waveform attacks with spectral flux.
+    // Spectral flux helps dense piano textures where RMS barely moves note-to-note.
+    let flux = 0;
+    for (let i = 0; i < n; i++) {
+      const d = buf[i] - prevBuf[i];
+      if (d > 0) flux += d / 255;
+    }
+    flux = clamp(flux / Math.max(1, n * 0.09), 0, 1);
+    prevBuf.set(buf);
+
     const dr = clamp(rms - lastRms, 0, 1);
     lastRms = lastRms * 0.92 + rms * 0.08;
-    const transient = clamp(dr * 8, 0, 1);
+    const transientRaw = clamp(Math.max(dr * 8, flux * 1.35), 0, 1);
+    lastTransient = lastTransient * 0.55 + transientRaw * 0.45;
+    const transient = clamp(lastTransient, 0, 1);
 
     emitSpectrum({
       energy: lastEnergy,
@@ -131,7 +147,7 @@ export function attachAudioReactivePlayer() {
     analyser = ctx.createAnalyser();
     analyser.fftSize = 1024;
     // Lower smoothing so fast passages can still modulate visuals.
-    analyser.smoothingTimeConstant = 0.55;
+    analyser.smoothingTimeConstant = 0.48;
 
     timeAnalyser = ctx.createAnalyser();
     timeAnalyser.fftSize = 1024;

@@ -96,9 +96,21 @@ export function initFreeformBackground() {
 
   // Particle field: lightweight “free-form” motion without dependencies.
   const rng = mulberry32(1337);
+  type Particle = {
+    p: Vec2;
+    v: Vec2;
+    s: number;
+    hue: number;
+    /** Per-particle attractor anchor (breaks a single global "disc orbit"). */
+    ox: number;
+    oy: number;
+    /** Alternating swirl direction so the field can't lock into one torus. */
+    spin: number;
+  };
+
   const baseCount = 140;
-  const particles: Array<{ p: Vec2; v: Vec2; s: number; hue: number }> = [];
-  const phase = new WeakMap<{ p: Vec2; v: Vec2; s: number; hue: number }, number>();
+  const particles: Particle[] = [];
+  const phase = new WeakMap<Particle, number>();
 
   function desiredCount() {
     const small = window.matchMedia?.("(max-width: 767px)")?.matches ?? false;
@@ -112,11 +124,14 @@ export function initFreeformBackground() {
     particles.length = 0;
     const count = desiredCount();
     for (let i = 0; i < count; i++) {
-      const pt = {
+      const pt: Particle = {
         p: { x: rng() * width, y: rng() * height },
         v: { x: (rng() - 0.5) * 0.4, y: (rng() - 0.5) * 0.4 },
         s: 0.6 + rng() * 1.6,
-        hue: rng() * 360
+        hue: rng() * 360,
+        ox: (0.25 + rng() * 0.5) * width,
+        oy: (0.22 + rng() * 0.56) * height,
+        spin: rng() < 0.5 ? -1 : 1
       };
       particles.push(pt);
       phase.set(pt, rng() * Math.PI * 2);
@@ -192,7 +207,7 @@ export function initFreeformBackground() {
 
     // Motion field
     const flow = 0.85 + sp * 1.0 + energy * 1.8 + beat * 2.0 + transient * 2.2 + bandMid * 0.9;
-    const swirl = 0.55 + sp * 1.2 + energy * 1.2 + beat * 1.2 + transient * 1.6 + bandHigh * 0.9;
+    const swirl = 0.42 + sp * 0.95 + energy * 0.95 + beat * 1.05 + transient * 1.45 + bandHigh * 0.85;
 
     // Keep colors by default; we'll use additive blending for bloom only.
     ctx.globalCompositeOperation = "source-over";
@@ -232,18 +247,23 @@ export function initFreeformBackground() {
 
       // Per-particle "center" avoids a single global disc orbit.
       const ph = phase.get(pt) ?? 0;
+      const w = 0.62;
       const cx =
         width *
-        (0.42 +
-          0.12 * Math.sin(time * 0.23 + ph) +
-          0.08 * Math.sin(time * 0.61 + ph * 2.1) +
-          0.05 * bandLow * Math.sin(time * 2.2 + transient * 6));
+          (0.42 +
+            0.12 * Math.sin(time * 0.23 + ph) +
+            0.08 * Math.sin(time * 0.61 + ph * 2.1) +
+            0.05 * bandLow * Math.sin(time * 2.2 + transient * 6)) *
+          (1 - w) +
+        pt.ox * w;
       const cy =
         height *
-        (0.38 +
-          0.1 * Math.cos(time * 0.19 + ph * 1.3) +
-          0.07 * Math.cos(time * 0.53 + ph * 1.9) +
-          0.05 * bandMid * Math.cos(time * 2.0 + transient * 5));
+          (0.38 +
+            0.1 * Math.cos(time * 0.19 + ph * 1.3) +
+            0.07 * Math.cos(time * 0.53 + ph * 1.9) +
+            0.05 * bandMid * Math.cos(time * 2.0 + transient * 5)) *
+          (1 - w) +
+        pt.oy * w;
 
       const dx = (pt.p.x - cx) / Math.max(1, width);
       const dy = (pt.p.y - cy) / Math.max(1, height);
@@ -251,9 +271,10 @@ export function initFreeformBackground() {
 
       // Curl-ish field using trig, stable + cheap.
       const a =
-        Math.atan2(dy, dx) +
-        Math.sin(time * 0.55 + dist * 8 + ph) * 0.28 * swirl +
-        Math.sin(time * 1.1 + nx * 10 + ny * 7 + ph) * 0.18 * (0.6 + transient);
+        Math.atan2(dy, dx) * pt.spin +
+        Math.sin(time * 0.55 + dist * 8 + ph) * 0.24 * swirl +
+        Math.sin(time * 1.1 + nx * 10 + ny * 7 + ph) * 0.2 * (0.65 + transient) +
+        Math.sin(time * 0.31 + nx * 19 + ny * 17 + ph * 3.7) * (0.12 + 0.18 * bandHigh);
 
       const falloff = 0.22 + 0.72 / (1 + dist * (5.2 + bandHigh * 2.0));
       const fx = -Math.sin(a) * falloff * flow;
