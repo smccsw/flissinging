@@ -1,0 +1,58 @@
+---
+export type Props = {
+  title?: string;
+  description?: string;
+};
+
+const { title = "Fliss Singing", description = "Singing portfolio and recordings." } = Astro.props;
+---
+
+<style>
+  @import "../styles/global.css";
+</style>
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+  </head>
+  <body class="min-h-dvh bg-zinc-950 text-zinc-100 antialiased">
+    <a
+      href="#content"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-zinc-900 focus:px-3 focus:py-2"
+    >
+      Skip to content
+    </a>
+
+    <div class="mx-auto flex min-h-dvh max-w-6xl flex-col px-4">
+      <header class="sticky top-0 z-40 -mx-4 border-b border-white/10 bg-zinc-950/70 px-4 backdrop-blur">
+        <div class="flex h-14 items-center justify-between">
+          <a href="/" class="font-semibold tracking-tight">Fliss Singing</a>
+          <nav class="flex items-center gap-4 text-sm text-zinc-200">
+            <a class="hover:text-white" href="/recordings">Recordings</a>
+            <a class="hover:text-white" href="/about">About</a>
+            <a class="hover:text-white" href="/contact">Contact</a>
+          </nav>
+        </div>
+      </header>
+
+      <main id="content" class="flex-1 py-10">
+        <slot />
+      </main>
+
+      <footer class="border-t border-white/10 py-8 text-sm text-zinc-400">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p>© {new Date().getFullYear()} Fliss Singing</p>
+          <p class="text-zinc-500">Built as a portfolio project.</p>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
+
