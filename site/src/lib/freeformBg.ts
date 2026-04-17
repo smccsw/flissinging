@@ -76,6 +76,8 @@ export function initFreeformBackground() {
   // Audio energy (0..1) pushed by the audio player when music is playing.
   let energy = 0;
   let energyTarget = 0;
+  let beat = 0;
+  let beatDecay = 0.86;
 
   const dpr = () => Math.min(2, window.devicePixelRatio || 1);
   let width = 0;
@@ -129,6 +131,10 @@ export function initFreeformBackground() {
     // Smooth energy so visuals feel musical, not jittery.
     energyTarget = clamp(energyTarget, 0, 1);
     energy = energy * 0.85 + energyTarget * 0.15;
+    // A simple beat detector: when energy rises quickly, punch a pulse.
+    const delta = energyTarget - energy;
+    if (delta > 0.12) beat = Math.min(1, beat + delta * 1.8);
+    beat *= beatDecay;
 
     // Background wash that subtly changes with scroll.
     const cA: [number, number, number] = [168, 85, 247]; // fuchsia-ish
@@ -138,20 +144,51 @@ export function initFreeformBackground() {
     ctx.clearRect(0, 0, width, height);
     ctx.globalCompositeOperation = "source-over";
 
+    // Darken wash to increase contrast while keeping color.
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.35 - energy * 0.08})`;
+    ctx.fillRect(0, 0, width, height);
+
     const g = ctx.createRadialGradient(width * 0.5, height * (0.3 + sp * 0.2), 0, width * 0.5, height * 0.5, Math.max(width, height) * 0.8);
-    g.addColorStop(0, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${0.06 + energy * 0.10})`);
+    g.addColorStop(0, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${0.10 + energy * 0.22 + beat * 0.20})`);
     g.addColorStop(0.6, "rgba(0,0,0,0)");
     g.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, width, height);
 
     // Motion field
-    const flow = 0.9 + sp * 1.2 + energy * 1.2;
-    const swirl = 0.6 + sp * 1.4 + energy * 1.0;
+    const flow = 0.9 + sp * 1.2 + energy * 2.2 + beat * 2.4;
+    const swirl = 0.6 + sp * 1.4 + energy * 1.5 + beat * 1.5;
     const centerX = width * (0.45 + 0.1 * Math.sin(time * 0.2));
     const centerY = height * (0.4 + 0.08 * Math.cos(time * 0.17));
 
     ctx.globalCompositeOperation = "lighter";
+
+    // Optional connective tissue: draw a few short lines for “energy”.
+    const connectDist = (Math.min(width, height) * 0.06) * (1 + energy * 1.4 + beat * 1.8);
+    const connectDist2 = connectDist * connectDist;
+    ctx.lineWidth = 1;
+
+    // Only connect a subset (cheap).
+    const step = energy > 0.15 ? 2 : 3;
+    for (let i = 0; i < particles.length; i += step) {
+      const a = particles[i];
+      for (let j = i + step; j < particles.length; j += step) {
+        const b = particles[j];
+        const dx = a.p.x - b.p.x;
+        const dy = a.p.y - b.p.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 > connectDist2) continue;
+        const d = Math.sqrt(d2);
+        const strength = 1 - d / connectDist;
+        const alpha = (0.02 + energy * 0.10 + beat * 0.14) * strength;
+        if (alpha <= 0.01) continue;
+        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+        ctx.beginPath();
+        ctx.moveTo(a.p.x, a.p.y);
+        ctx.lineTo(b.p.x, b.p.y);
+        ctx.stroke();
+      }
+    }
 
     for (const pt of particles) {
       const dx = (pt.p.x - centerX) / Math.max(1, width);
@@ -177,13 +214,24 @@ export function initFreeformBackground() {
       if (pt.p.y > height + 10) pt.p.y = -10;
 
       const alpha = 0.12 + 0.12 * Math.sin(time + dist * 6);
-      const size = pt.s * (0.8 + 0.6 * (1 - clamp(dist * 1.4, 0, 1))) * (0.9 + energy * 0.55);
+      const size =
+        pt.s *
+        (0.8 + 0.6 * (1 - clamp(dist * 1.4, 0, 1))) *
+        (1.05 + energy * 1.05 + beat * 0.9);
 
       const hue = (pt.hue + sp * 120 + time * 6) % 360;
-      ctx.fillStyle = `hsla(${hue}, 90%, ${68 + energy * 12}%, ${alpha + energy * 0.06})`;
+      ctx.fillStyle = `hsla(${hue}, 95%, ${74 + energy * 18 + beat * 10}%, ${alpha + energy * 0.18 + beat * 0.22})`;
       ctx.beginPath();
       ctx.arc(pt.p.x, pt.p.y, size, 0, Math.PI * 2);
       ctx.fill();
+
+      // Tiny hot core for contrast.
+      if (energy > 0.08) {
+        ctx.fillStyle = `rgba(255,255,255,${0.03 + energy * 0.08 + beat * 0.10})`;
+        ctx.beginPath();
+        ctx.arc(pt.p.x, pt.p.y, Math.max(0.6, size * 0.35), 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     raf = requestAnimationFrame(draw);
