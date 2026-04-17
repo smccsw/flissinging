@@ -23,7 +23,7 @@ import { recordings } from "../data/recordings";
         <button
           type="button"
           data-recording-btn
-          data-src={r.src}
+          data-src={import.meta.env.BASE_URL + r.src}
           class="group rounded-xl border border-white/10 bg-zinc-950/30 p-4 text-left hover:border-white/25"
         >
           <p class="text-sm font-semibold text-white">{r.title}</p>
