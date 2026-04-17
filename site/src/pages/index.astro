@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import ScrollStory from "../components/ScrollStory.astro";
+import { sitePath } from "../lib/sitePath";
 ---
 
 <Layout title="Fliss Singing">
@@ -18,13 +19,13 @@ import ScrollStory from "../components/ScrollStory.astro";
 
 				<div class="mt-8 flex flex-col gap-3 sm:flex-row">
 					<a
-						href="/recordings"
+						href={sitePath("recordings")}
 						class="inline-flex items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-zinc-200"
 					>
 						View recordings
 					</a>
 					<a
-						href="/contact"
+						href={sitePath("contact")}
 						class="inline-flex items-center justify-center rounded-md border border-white/15 px-4 py-2 text-sm font-medium text-white hover:border-white/30"
 					>
 						Contact / booking
