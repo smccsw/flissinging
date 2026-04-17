@@ -5,6 +5,8 @@ export type Props = {
 };
 
 const { title = "Fliss Singing", description = "Singing portfolio and recordings." } = Astro.props;
+
+import FreeformBackground from "../components/FreeformBackground.astro";
 ---
 
 <style>
@@ -35,6 +37,8 @@ const { title = "Fliss Singing", description = "Singing portfolio and recordings
     >
       Skip to content
     </a>
+
+    <FreeformBackground />
 
     <div class="mx-auto flex min-h-dvh max-w-6xl flex-col px-4">
       <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10">

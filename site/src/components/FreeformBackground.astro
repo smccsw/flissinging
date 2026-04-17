@@ -1,0 +1,27 @@
+---
+/**
+ * Full-page generative canvas background.
+ * - Toggleable via a small "FX" button (persisted in localStorage).
+ * - Respects prefers-reduced-motion.
+ * - Auto-reduces work on smaller screens.
+ */
+---
+
+<div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-20">
+  <canvas data-freeform-bg class="h-full w-full opacity-70"></canvas>
+</div>
+
+<!-- FX toggle (interactive, but tiny + unobtrusive) -->
+<button
+  type="button"
+  data-freeform-toggle
+  class="fixed bottom-4 right-4 z-50 rounded-full border border-white/15 bg-zinc-950/60 px-3 py-2 text-xs font-medium tracking-wide text-zinc-200 backdrop-blur hover:border-white/30 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+>
+  FX
+</button>
+
+<script>
+  import { initFreeformBackground } from "../lib/freeformBg";
+  initFreeformBackground();
+</script>
+
