@@ -5,7 +5,7 @@ export type Recording = {
   date?: string;
   /**
    * Path relative to Astro base URL (no leading slash).
-   * Example: "audio/example.ogg"
+   * Example: "audio/example.ogg" or "audio/track.mp3"
    */
   src: string;
   licenseLabel: string;
@@ -31,14 +31,14 @@ export const recordings: Recording[] = [
     sourceUrl: "https://commons.wikimedia.org/wiki/File:Minuet_in_G_(Beethoven),_piano.ogg"
   },
   {
-    id: "rondo-alla-turca",
-    title: "Rondo alla turca (Mozart, K. 331)",
-    subtitle: "Public domain (Wikimedia Commons; synthesized from Mutopia MIDI)",
-    src: "audio/rondo-alla-turca-mozart.ogg",
-    playbackGain: 1.35,
-    licenseLabel: "Public Domain / CC Public Domain Mark 1.0",
-    licenseUrl: "https://creativecommons.org/publicdomain/mark/1.0/",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Rondo_Alla_Turka.ogg"
+    id: "volatile-reaction",
+    title: "Volatile Reaction",
+    subtitle: "Instrumental rock · Kevin MacLeod / incompetech.com (CC BY 3.0 — credit required if you reuse the file)",
+    src: "audio/volatile-reaction-kevin-macleod.mp3",
+    playbackGain: 0.92,
+    licenseLabel: "Creative Commons Attribution 3.0 Unported",
+    licenseUrl: "https://creativecommons.org/licenses/by/3.0/",
+    sourceUrl: "https://incompetech.com/music/royalty-free/"
   }
 ];
 
