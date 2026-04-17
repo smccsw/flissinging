@@ -78,6 +78,7 @@ export function initFreeformBackground() {
   let energyTarget = 0;
   let beat = 0;
   let beatDecay = 0.86;
+  let ripplePhase = 0;
 
   const dpr = () => Math.min(2, window.devicePixelRatio || 1);
   let width = 0;
@@ -133,8 +134,12 @@ export function initFreeformBackground() {
     energy = energy * 0.85 + energyTarget * 0.15;
     // A simple beat detector: when energy rises quickly, punch a pulse.
     const delta = energyTarget - energy;
-    if (delta > 0.12) beat = Math.min(1, beat + delta * 1.8);
+    if (delta > 0.06) {
+      beat = Math.min(1, beat + delta * 2.6);
+      ripplePhase = 1;
+    }
     beat *= beatDecay;
+    ripplePhase = Math.max(0, ripplePhase - 0.02);
 
     // Background wash that subtly changes with scroll.
     const cA: [number, number, number] = [168, 85, 247]; // fuchsia-ish
@@ -145,15 +150,33 @@ export function initFreeformBackground() {
     ctx.globalCompositeOperation = "source-over";
 
     // Darken wash to increase contrast while keeping color.
-    ctx.fillStyle = `rgba(0, 0, 0, ${0.35 - energy * 0.08})`;
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.45 - energy * 0.18})`;
     ctx.fillRect(0, 0, width, height);
 
-    const g = ctx.createRadialGradient(width * 0.5, height * (0.3 + sp * 0.2), 0, width * 0.5, height * 0.5, Math.max(width, height) * 0.8);
-    g.addColorStop(0, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${0.10 + energy * 0.22 + beat * 0.20})`);
+    const g = ctx.createRadialGradient(
+      width * 0.5,
+      height * (0.3 + sp * 0.2),
+      0,
+      width * 0.5,
+      height * 0.5,
+      Math.max(width, height) * 0.85
+    );
+    g.addColorStop(0, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${0.14 + energy * 0.42 + beat * 0.35})`);
     g.addColorStop(0.6, "rgba(0,0,0,0)");
     g.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, width, height);
+
+    // Big ripple ring on beats (very visible).
+    if (ripplePhase > 0) {
+      const r = (Math.min(width, height) * 0.18) * (1 + (1 - ripplePhase) * 2.8);
+      const ring = ctx.createRadialGradient(width * 0.5, height * 0.45, r * 0.55, width * 0.5, height * 0.45, r);
+      ring.addColorStop(0, "rgba(255,255,255,0)");
+      ring.addColorStop(0.72, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${0.06 + beat * 0.22})`);
+      ring.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = ring;
+      ctx.fillRect(0, 0, width, height);
+    }
 
     // Motion field
     const flow = 0.9 + sp * 1.2 + energy * 2.2 + beat * 2.4;
@@ -164,7 +187,7 @@ export function initFreeformBackground() {
     ctx.globalCompositeOperation = "lighter";
 
     // Optional connective tissue: draw a few short lines for “energy”.
-    const connectDist = (Math.min(width, height) * 0.06) * (1 + energy * 1.4 + beat * 1.8);
+    const connectDist = (Math.min(width, height) * 0.075) * (1 + energy * 1.9 + beat * 2.2);
     const connectDist2 = connectDist * connectDist;
     ctx.lineWidth = 1;
 
@@ -180,7 +203,7 @@ export function initFreeformBackground() {
         if (d2 > connectDist2) continue;
         const d = Math.sqrt(d2);
         const strength = 1 - d / connectDist;
-        const alpha = (0.02 + energy * 0.10 + beat * 0.14) * strength;
+        const alpha = (0.035 + energy * 0.18 + beat * 0.28) * strength;
         if (alpha <= 0.01) continue;
         ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
         ctx.beginPath();
@@ -220,14 +243,14 @@ export function initFreeformBackground() {
         (1.05 + energy * 1.05 + beat * 0.9);
 
       const hue = (pt.hue + sp * 120 + time * 6) % 360;
-      ctx.fillStyle = `hsla(${hue}, 95%, ${74 + energy * 18 + beat * 10}%, ${alpha + energy * 0.18 + beat * 0.22})`;
+      ctx.fillStyle = `hsla(${hue}, 98%, ${78 + energy * 20 + beat * 14}%, ${alpha + energy * 0.30 + beat * 0.38})`;
       ctx.beginPath();
       ctx.arc(pt.p.x, pt.p.y, size, 0, Math.PI * 2);
       ctx.fill();
 
       // Tiny hot core for contrast.
       if (energy > 0.08) {
-        ctx.fillStyle = `rgba(255,255,255,${0.03 + energy * 0.08 + beat * 0.10})`;
+        ctx.fillStyle = `rgba(255,255,255,${0.05 + energy * 0.14 + beat * 0.18})`;
         ctx.beginPath();
         ctx.arc(pt.p.x, pt.p.y, Math.max(0.6, size * 0.35), 0, Math.PI * 2);
         ctx.fill();

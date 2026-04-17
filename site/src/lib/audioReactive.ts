@@ -21,12 +21,15 @@ export function attachAudioReactivePlayer() {
 
   let ctx: AudioContext | null = null;
   let analyser: AnalyserNode | null = null;
+  let timeAnalyser: AnalyserNode | null = null;
   let source: MediaElementAudioSourceNode | null = null;
   let raf = 0;
   let lastEnergy = 0;
+  let peak = 0;
 
   const freqData = () => new Uint8Array(analyser?.frequencyBinCount ?? 0);
   let buf = new Uint8Array(0);
+  let tbuf = new Uint8Array(0);
 
   function emit(energy: number) {
     const detail: EnergyEventDetail = { energy: clamp(energy, 0, 1) };
@@ -34,10 +37,12 @@ export function attachAudioReactivePlayer() {
   }
 
   function tick() {
-    if (!analyser) return;
+    if (!analyser || !timeAnalyser) return;
     if (buf.length !== analyser.frequencyBinCount) buf = freqData();
+    if (tbuf.length !== timeAnalyser.fftSize) tbuf = new Uint8Array(timeAnalyser.fftSize);
 
     analyser.getByteFrequencyData(buf);
+    timeAnalyser.getByteTimeDomainData(tbuf);
     // Weighted average: bias towards mid/high frequencies for "sparkle".
     let sum = 0;
     let wsum = 0;
@@ -49,9 +54,23 @@ export function attachAudioReactivePlayer() {
     }
     const raw = wsum ? sum / wsum : 0;
 
-    // Smooth + slightly boost.
-    const energy = clamp(raw * 1.35, 0, 1);
-    lastEnergy = lastEnergy * 0.82 + energy * 0.18;
+    // RMS from waveform (captures "loudness" even for sparse piano).
+    let rms = 0;
+    for (let i = 0; i < tbuf.length; i++) {
+      const v = (tbuf[i] - 128) / 128;
+      rms += v * v;
+    }
+    rms = Math.sqrt(rms / Math.max(1, tbuf.length)); // 0..~1
+
+    // Combine + auto-gain: make it "obvious" on quieter material.
+    const combined = clamp(raw * 0.9 + rms * 1.25, 0, 1);
+    const boosted = clamp(Math.pow(combined, 0.6) * 1.35, 0, 1);
+
+    // Peak hold for punchy pulses.
+    peak = Math.max(boosted, peak * 0.93);
+
+    // Smooth but less sleepy than before.
+    lastEnergy = lastEnergy * 0.7 + peak * 0.3;
     emit(lastEnergy);
 
     raf = requestAnimationFrame(tick);
@@ -64,8 +83,13 @@ export function attachAudioReactivePlayer() {
     analyser.fftSize = 1024;
     analyser.smoothingTimeConstant = 0.82;
 
+    timeAnalyser = ctx.createAnalyser();
+    timeAnalyser.fftSize = 1024;
+    timeAnalyser.smoothingTimeConstant = 0.5;
+
     source = ctx.createMediaElementSource(audio);
     source.connect(analyser);
+    source.connect(timeAnalyser);
     analyser.connect(ctx.destination);
   }
 
