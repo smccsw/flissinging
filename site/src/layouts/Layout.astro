@@ -7,11 +7,17 @@ export type Props = {
 const { title = "Fliss Singing", description = "Singing portfolio and recordings." } = Astro.props;
 
 import FreeformBackground from "../components/FreeformBackground.astro";
+import { FX_PALETTES } from "../lib/fxPalette";
 import { sitePath } from "../lib/sitePath";
 ---
 
 <style>
   @import "../styles/global.css";
+  @media (prefers-reduced-motion: reduce) {
+    [data-fx-controls] {
+      display: none;
+    }
+  }
 </style>
 
 <!doctype html>
@@ -54,14 +60,49 @@ import { sitePath } from "../lib/sitePath";
         />
       </div>
 
-      <header class="sticky top-0 z-40 -mx-4 border-b border-white/10 bg-zinc-950/60 px-4 backdrop-blur">
-        <div class="flex h-14 items-center justify-between">
-          <a href={sitePath("")} class="font-semibold tracking-tight">Fliss Singing</a>
-          <nav class="flex items-center gap-4 text-sm text-zinc-200">
-            <a class="hover:text-white" href={sitePath("recordings")}>Recordings</a>
-            <a class="hover:text-white" href={sitePath("about")}>About</a>
-            <a class="hover:text-white" href={sitePath("contact")}>Contact</a>
-          </nav>
+      <header class="sticky top-0 z-40 -mx-4 border-b border-white/10 bg-zinc-950/70 px-4 backdrop-blur">
+        <div class="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-2.5">
+          <div class="flex items-center justify-between gap-6 sm:justify-start">
+            <a href={sitePath("")} class="shrink-0 font-semibold tracking-tight">Fliss Singing</a>
+            <nav class="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm text-zinc-200">
+              <a class="hover:text-white" href={sitePath("recordings")}>Recordings</a>
+              <a class="hover:text-white" href={sitePath("about")}>About</a>
+              <a class="hover:text-white" href={sitePath("contact")}>Contact</a>
+            </nav>
+          </div>
+
+          <div
+            data-fx-controls
+            class="flex flex-wrap items-center gap-2 border-t border-white/10 pt-3 sm:border-t-0 sm:pt-0 md:gap-3"
+          >
+            <span class="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-500">Background</span>
+            <div
+              class="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-zinc-950/55 px-1.5 py-1 sm:gap-1.5 sm:px-2 sm:py-1.5"
+              role="group"
+              aria-label="Background color palette"
+            >
+              {
+                FX_PALETTES.map((p) => (
+                  <button
+                    type="button"
+                    data-fx-palette={p.id}
+                    title={p.label}
+                    aria-label={`Palette: ${p.label}`}
+                    aria-pressed="false"
+                    class="fx-palette-swatch h-7 w-7 shrink-0 rounded-full ring-2 ring-zinc-700/60 transition hover:ring-white/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/45 sm:h-8 sm:w-8"
+                    style={`background: linear-gradient(135deg, rgb(${p.washA.join(",")}), rgb(${p.washB.join(",")}))`}
+                  />
+                ))
+              }
+            </div>
+            <button
+              type="button"
+              data-freeform-toggle
+              class="shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-medium tracking-wide text-zinc-200 hover:border-white/25 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+              FX
+            </button>
+          </div>
         </div>
       </header>
 
