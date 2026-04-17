@@ -3,6 +3,10 @@ export type Recording = {
   title: string;
   subtitle?: string;
   date?: string;
+  /**
+   * Path relative to Astro base URL (no leading slash).
+   * Example: "audio/example.ogg"
+   */
   src: string;
   licenseLabel: string;
   licenseUrl: string;
@@ -16,7 +20,7 @@ export const recordings: Recording[] = [
     id: "minuet-in-g",
     title: "Minuet in G (Beethoven)",
     subtitle: "Public domain recording (Musopen / Wikimedia Commons)",
-    src: "/audio/minuet-in-g-beethoven.ogg",
+    src: "audio/minuet-in-g-beethoven.ogg",
     licenseLabel: "Public Domain / CC Public Domain Mark 1.0",
     licenseUrl: "https://creativecommons.org/publicdomain/mark/1.0/",
     sourceUrl: "https://commons.wikimedia.org/wiki/File:Minuet_in_G_(Beethoven),_piano.ogg"
@@ -25,7 +29,7 @@ export const recordings: Recording[] = [
     id: "maple-leaf-rag",
     title: "Maple Leaf Rag (Scott Joplin, 1916)",
     subtitle: "Piano roll recording (public domain)",
-    src: "/audio/maple-leaf-rag-joplin-1916.ogg",
+    src: "audio/maple-leaf-rag-joplin-1916.ogg",
     licenseLabel: "Public Domain (US) / Public Domain Mark",
     licenseUrl: "https://creativecommons.org/publicdomain/mark/1.0/",
     sourceUrl: "https://commons.wikimedia.org/wiki/File:Maple_leaf_rag_-_played_by_Scott_Joplin_1916_V2.ogg"
